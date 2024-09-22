@@ -337,6 +337,12 @@ fn ui(
 
             ui.toggle_value(&mut settings.gizmos_enabled, "Enable gizmos");
 
+            if ui.add(egui::Button::new("Clear all")).clicked() {
+                for (_entity, mut line, _, _, _, _, _) in rotating.iter_mut() {
+                    line.0 = Vec::new();
+                }
+            }
+
             if ui.add(egui::Button::new("Add")).clicked() {
                 commands.spawn((
                     Gear,
