@@ -5,10 +5,10 @@ use bevy_egui::{egui, EguiContexts};
 struct Fixed;
 
 #[derive(Component)]
-struct Rotation {
-    angle: f32,
-    speed: f32,
-}
+struct Rotation(f32);
+
+#[derive(Component)]
+struct Speed(f32);
 
 #[derive(Component)]
 struct Gear;
@@ -106,10 +106,8 @@ fn setup(mut commands: Commands) {
     let gear_2_radius = 27.5;
     commands.spawn((
         Gear,
-        Rotation {
-            angle: 0.0,
-            speed: 0.1,
-        },
+        Rotation(0.0),
+        Speed(0.1),
         Radius(gear_2_radius),
         Pen(20.0),
         PenPos(Vec2::ZERO),
@@ -184,15 +182,17 @@ fn draw_line(mut gizmos: Gizmos, rotating: Query<&Line>) {
 fn rotate_gears(
     fixed: Query<(&Transform, &Radius), (With<Fixed>, Without<Rotation>)>,
     mut rotating: Query<
-        (&mut Transform, &mut Rotation, &Radius),
+        (&mut Transform, &mut Rotation, &Speed, &Radius),
         (With<Rotation>, Without<Fixed>, Without<Paused>),
     >,
 ) {
     let (fixed_transform, Radius(fixed_radius)) = r!(fixed.get_single());
-    for (mut rotating_transform, mut rotation, Radius(rotating_radius)) in rotating.iter_mut() {
+    for (mut rotating_transform, mut rotation, Speed(speed), Radius(rotating_radius)) in
+        rotating.iter_mut()
+    {
         // Calculate the new angle and center position of the rotating circle
         let (angle, center) = {
-            let rotation_radians = rotation.angle;
+            let rotation_radians = rotation.0;
 
             // Calculate the distance traveled by the center of the small circle
             let distance_traveled = rotation_radians * rotating_radius;
@@ -210,7 +210,7 @@ fn rotate_gears(
         };
 
         // Move the small circle around the circle
-        rotation.angle += rotation.speed;
+        rotation.0 += speed;
 
         rotating_transform.translation = fixed_transform.translation + center.extend(0.0);
         rotating_transform.rotation = Quat::from_rotation_z(-angle);
@@ -223,7 +223,7 @@ fn ui(
     mut rotating: Query<(
         Entity,
         &mut Line,
-        &mut Rotation,
+        &mut Speed,
         &mut Pen,
         &mut Radius,
         Option<&Paused>,
@@ -238,7 +238,7 @@ fn ui(
                 .inner_margin(10.0),
         )
         .show(contexts.ctx_mut(), |ui| {
-            for (i, (entity, mut line, mut rotation, mut pen, mut radius, paused)) in
+            for (i, (entity, mut line, mut speed, mut pen, mut radius, paused)) in
                 rotating.iter_mut().enumerate()
             {
                 egui::Grid::new(format!("grid {}", i))
@@ -248,7 +248,7 @@ fn ui(
                     .show(ui, |ui| {
                         ui.label("Speed");
                         ui.add(
-                            egui::DragValue::new(&mut rotation.speed)
+                            egui::DragValue::new(&mut speed.0)
                                 .range(0.01..=1.0)
                                 .speed(0.01),
                         );
@@ -299,10 +299,8 @@ fn ui(
             if ui.add(egui::Button::new("Add")).clicked() {
                 commands.spawn((
                     Gear,
-                    Rotation {
-                        angle: 90.0_f32.to_radians(),
-                        speed: 0.1,
-                    },
+                    Rotation(90.0_f32.to_radians()),
+                    Speed(0.1),
                     Radius(20.0),
                     Pen(20.0),
                     PenPos(Vec2::ZERO),
