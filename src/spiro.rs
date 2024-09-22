@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{dragging::Draggable, prelude::*};
 use bevy_egui::{egui, EguiContexts};
 
 #[derive(Component)]
@@ -14,7 +14,7 @@ struct Rotation {
 struct Gear;
 
 #[derive(Component)]
-struct Radius(f32);
+pub struct Radius(pub f32);
 
 #[derive(Component)]
 struct Pen(f32);
@@ -88,6 +88,7 @@ fn on_spawn_gears(_trigger: Trigger<SpawnGears>, mut commands: Commands) {
         Fixed,
         Radius(gear_1_radius),
         Color(color::AMBER_600),
+        Draggable,
         SpatialBundle {
             transform: Transform {
                 translation: fixed_gear_tranlation,

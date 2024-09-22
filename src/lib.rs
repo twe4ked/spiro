@@ -3,6 +3,7 @@
 use bevy_debug_text_overlay::OverlayPlugin as DebugTextPlugin;
 use bevy_egui::EguiPlugin;
 
+mod dragging;
 mod spiro;
 
 pub mod prelude {
@@ -41,7 +42,11 @@ impl Plugin for LibPlugin {
                 ..default()
             })
             .add_plugins(EguiPlugin)
-            .add_plugins(spiro::plugin)
+            .add_plugins((
+                //
+                spiro::plugin,
+                dragging::plugin,
+            ))
             .add_systems(Startup, spawn_camera);
     }
 }
