@@ -179,40 +179,46 @@ fn draw_line(mut gizmos: Gizmos, rotating: Query<&Line>) {
     }
 }
 
+// Calculate the new angle and center position of the rotating circle
+fn new_angle_and_center(
+    rotation_radians: f32,
+    fixed_radius: f32,
+    rotating_radius: f32,
+) -> (f32, Vec2) {
+    // Calculate the distance traveled by the center of the small circle
+    let distance_traveled = rotation_radians * rotating_radius;
+
+    // The angle through which the small circle rotates around the center of the large circle
+    let angle_large_circle = distance_traveled / fixed_radius;
+
+    // Total angle in radians for the small circle (due to rotation and rolling)
+    let total_angle_small_circle = rotation_radians + angle_large_circle;
+
+    // Calculate the new position of the center of the small circle
+    let center = (fixed_radius - rotating_radius) * Vec2::from_angle(angle_large_circle);
+
+    (total_angle_small_circle, center)
+}
+
 fn rotate_gears(
-    fixed: Query<(&Transform, &Radius), (With<Fixed>, Without<Rotation>)>,
-    mut rotating: Query<
+    q_fixed: Query<(&Transform, &Radius), (With<Fixed>, Without<Rotation>)>,
+    mut q_gears: Query<
         (&mut Transform, &mut Rotation, &Speed, &Radius),
         (With<Rotation>, Without<Fixed>, Without<Paused>),
     >,
 ) {
-    let (fixed_transform, Radius(fixed_radius)) = r!(fixed.get_single());
-    for (mut rotating_transform, mut rotation, Speed(speed), Radius(rotating_radius)) in
-        rotating.iter_mut()
+    let (fixed_transform, &Radius(fixed_radius)) = r!(q_fixed.get_single());
+
+    for (mut rotating_transform, mut rotation, Speed(speed), &Radius(rotating_radius)) in
+        q_gears.iter_mut()
     {
-        // Calculate the new angle and center position of the rotating circle
-        let (angle, center) = {
-            let rotation_radians = rotation.0;
-
-            // Calculate the distance traveled by the center of the small circle
-            let distance_traveled = rotation_radians * rotating_radius;
-
-            // The angle through which the small circle rotates around the center of the large circle
-            let angle_large_circle = distance_traveled / fixed_radius;
-
-            // Total angle in radians for the small circle (due to rotation and rolling)
-            let total_angle_small_circle = rotation_radians + angle_large_circle;
-
-            // Calculate the new position of the center of the small circle
-            let center = (fixed_radius - rotating_radius) * Vec2::from_angle(angle_large_circle);
-
-            (total_angle_small_circle, center)
-        };
-
-        // Move the small circle around the circle
+        // Move the rotating gear around the fixed gear
         rotation.0 += speed;
 
-        rotating_transform.translation = fixed_transform.translation + center.extend(0.0);
+        // Based on the rotation, calculate the new position and the new angle of the rotating gea,
+        let (angle, new_pos) = new_angle_and_center(rotation.0, fixed_radius, rotating_radius);
+
+        rotating_transform.translation = fixed_transform.translation + new_pos.extend(0.0);
         rotating_transform.rotation = Quat::from_rotation_z(-angle);
     }
 }
