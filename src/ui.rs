@@ -81,7 +81,7 @@ fn ui(
                         .num_columns(2)
                         .spacing([40.0, 4.0])
                         .striped(true)
-                        .show(ui, |ui| {
+                        .show(ui, |mut ui| {
                             ui.label("Speed");
                             ui.add(
                                 egui::DragValue::new(&mut speed.0)
@@ -106,34 +106,11 @@ fn ui(
                             );
                             ui.end_row();
 
-                            {
-                                let [r, g, b, a] = Srgba::from(line_color.0).to_f32_array();
-                                let mut egui_color: egui::Rgba =
-                                    egui::Rgba::from_srgba_unmultiplied(
-                                        (r * 255.0) as u8,
-                                        (g * 255.0) as u8,
-                                        (b * 255.0) as u8,
-                                        (a * 255.0) as u8,
-                                    );
-
-                                ui.label("Line color");
-                                egui::widgets::color_picker::color_edit_button_rgba(
-                                    ui,
-                                    &mut egui_color,
-                                    egui::color_picker::Alpha::Opaque,
-                                );
-                                ui.end_row();
-
-                                let [r, g, b, a] = egui_color.to_srgba_unmultiplied();
-                                line_color.0 = Color::srgba(
-                                    r as f32 / 255.0,
-                                    g as f32 / 255.0,
-                                    b as f32 / 255.0,
-                                    a as f32 / 255.0,
-                                )
-                                .into();
-                            }
+                            ui.label("Line color");
+                            color_picker(&mut ui, &mut line_color.0);
+                            ui.end_row();
                         });
+
                     ui.horizontal(|ui| {
                         if ui.add(egui::Button::new("Clear line")).clicked() {
                             line.0 = Vec::new();
@@ -185,4 +162,29 @@ fn update_cursor_icon(mut contexts: EguiContexts, cursor: Res<Cursor>) {
         let ctx = contexts.ctx_mut();
         ctx.set_cursor_icon(cursor_icon);
     }
+}
+
+fn color_picker(mut ui: &mut egui::Ui, line_color: &mut Srgba) {
+    let [r, g, b, a] = line_color.to_f32_array();
+    let mut egui_color: egui::Rgba = egui::Rgba::from_srgba_unmultiplied(
+        (r * 255.0) as u8,
+        (g * 255.0) as u8,
+        (b * 255.0) as u8,
+        (a * 255.0) as u8,
+    );
+
+    egui::widgets::color_picker::color_edit_button_rgba(
+        &mut ui,
+        &mut egui_color,
+        egui::color_picker::Alpha::Opaque,
+    );
+
+    let [r, g, b, a] = egui_color.to_srgba_unmultiplied();
+    *line_color = Color::srgba(
+        r as f32 / 255.0,
+        g as f32 / 255.0,
+        b as f32 / 255.0,
+        a as f32 / 255.0,
+    )
+    .into();
 }
