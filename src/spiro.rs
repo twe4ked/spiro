@@ -89,7 +89,7 @@ pub struct FixedGearBundle {
     pub gear: Gear,
     pub radius: Radius,
     pub gear_color: GearColor,
-    pub spatial_bundle: SpatialBundle,
+    pub transform_bundle: TransformBundle,
     pub fixed: Fixed,
     pub draggable: Draggable,
 }
@@ -102,7 +102,19 @@ impl Default for FixedGearBundle {
             draggable: Draggable,
             radius: Radius(75.0),
             gear_color: GearColor(color::AMBER_600),
-            spatial_bundle: SpatialBundle::default(),
+            transform_bundle: TransformBundle::default(),
+        }
+    }
+}
+
+impl FixedGearBundle {
+    pub fn new(translation: Vec3) -> Self {
+        Self {
+            transform_bundle: TransformBundle {
+                local: Transform::from_translation(translation),
+                ..default()
+            },
+            ..default()
         }
     }
 }
@@ -112,7 +124,7 @@ pub struct RotatingGearBundle {
     pub gear: Gear,
     pub radius: Radius,
     pub gear_color: GearColor,
-    pub spatial_bundle: SpatialBundle,
+    pub transform_bundle: TransformBundle,
     pub rotation: Rotation,
     pub speed: Speed,
     pub pen: Pen,
@@ -127,13 +139,13 @@ impl Default for RotatingGearBundle {
             gear: Gear,
             rotation: Rotation(0.0),
             speed: Speed(0.1),
-            radius: Radius(0.0),
+            radius: Radius(27.5),
             pen: Pen(20.0),
             pen_pos: PenPos(Vec2::ZERO),
             gear_color: GearColor(color::PURPLE_600),
             line: Line(Vec::new()),
             line_color: LineColor(Srgba::BLACK),
-            spatial_bundle: SpatialBundle::default(),
+            transform_bundle: TransformBundle::default(),
         }
     }
 }
@@ -141,17 +153,11 @@ impl Default for RotatingGearBundle {
 fn setup(mut commands: Commands) {
     commands.insert_resource(Settings::default());
 
-    let fixed_gear = FixedGearBundle::default();
-
-    let gear_2_radius = 27.5;
-    let mut rotating_gear = RotatingGearBundle::default();
-    rotating_gear.radius = Radius(gear_2_radius);
-    rotating_gear.spatial_bundle.transform.translation.y =
-        fixed_gear.spatial_bundle.transform.translation.y + (fixed_gear.radius.0 + gear_2_radius);
-
-    commands.spawn(fixed_gear).with_children(|parent| {
-        parent.spawn(rotating_gear);
-    });
+    commands
+        .spawn(FixedGearBundle::default())
+        .with_children(|parent| {
+            parent.spawn(RotatingGearBundle::default());
+        });
 }
 
 fn update_pen_pos(

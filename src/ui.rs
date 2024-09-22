@@ -169,18 +169,11 @@ fn ui(
                     }
 
                     if ui.add(Button::new("Add")).clicked() {
-                        let fixed_gear = FixedGearBundle::default();
-
-                        let gear_2_radius = 27.5;
-                        let mut rotating_gear = RotatingGearBundle::default();
-                        rotating_gear.radius = Radius(gear_2_radius);
-                        rotating_gear.spatial_bundle.transform.translation.y =
-                            fixed_gear.spatial_bundle.transform.translation.y
-                                + (fixed_gear.radius.0 + gear_2_radius);
-
-                        commands.spawn(fixed_gear).with_children(|parent| {
-                            parent.spawn(rotating_gear);
-                        });
+                        commands
+                            .spawn(FixedGearBundle::new(Vec3::ZERO.with_x(200.0)))
+                            .with_children(|parent| {
+                                parent.spawn(RotatingGearBundle::default());
+                            });
                     }
                 });
 
