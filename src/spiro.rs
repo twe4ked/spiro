@@ -84,51 +84,74 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(Startup, setup);
 }
 
+#[derive(Bundle)]
+struct FixedGearBundle {
+    gear: Gear,
+    radius: Radius,
+    gear_color: GearColor,
+    spatial_bundle: SpatialBundle,
+    fixed: Fixed,
+    draggable: Draggable,
+}
+
+impl Default for FixedGearBundle {
+    fn default() -> Self {
+        Self {
+            gear: Gear,
+            fixed: Fixed,
+            draggable: Draggable,
+            radius: Radius(75.0),
+            gear_color: GearColor(color::AMBER_600),
+            spatial_bundle: SpatialBundle::default(),
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct RotatingGearBundle {
+    gear: Gear,
+    radius: Radius,
+    gear_color: GearColor,
+    spatial_bundle: SpatialBundle,
+    rotation: Rotation,
+    speed: Speed,
+    pen: Pen,
+    pen_pos: PenPos,
+    line: Line,
+    line_color: LineColor,
+}
+
+impl Default for RotatingGearBundle {
+    fn default() -> Self {
+        Self {
+            gear: Gear,
+            rotation: Rotation(0.0),
+            speed: Speed(0.1),
+            radius: Radius(0.0),
+            pen: Pen(20.0),
+            pen_pos: PenPos(Vec2::ZERO),
+            gear_color: GearColor(color::PURPLE_600),
+            line: Line(Vec::new()),
+            line_color: LineColor(color::EMERALD_600),
+            spatial_bundle: SpatialBundle::default(),
+        }
+    }
+}
+
 fn setup(mut commands: Commands) {
     commands.insert_resource(Settings::default());
 
-    let fixed_gear_tranlation = Vec3::new(0.0, 20.0, 0.0);
-
-    // TODO: Each rotating gear needs to be attached to a fixed gear
-    let gear_1_radius = 75.0;
-    commands.spawn((
-        Gear,
-        Fixed,
-        Radius(gear_1_radius),
-        GearColor(color::AMBER_600),
-        Draggable,
-        SpatialBundle {
-            transform: Transform {
-                translation: fixed_gear_tranlation,
-                ..default()
-            },
-            ..default()
-        },
-    ));
+    let fixed_gear = FixedGearBundle::default();
 
     let gear_2_radius = 27.5;
-    commands.spawn((
-        Gear,
-        Rotation(0.0),
-        Speed(0.1),
-        Radius(gear_2_radius),
-        Pen(20.0),
-        PenPos(Vec2::ZERO),
-        GearColor(color::PURPLE_600),
-        Line(Vec::new()),
-        LineColor(color::EMERALD_600),
-        SpatialBundle {
-            transform: Transform {
-                translation: Vec3::new(
-                    0.0,
-                    fixed_gear_tranlation.y + (gear_1_radius + gear_2_radius),
-                    0.0,
-                ),
-                ..default()
-            },
-            ..default()
-        },
-    ));
+    let mut rotating_gear = RotatingGearBundle::default();
+    rotating_gear.radius = Radius(gear_2_radius);
+    rotating_gear.spatial_bundle.transform.translation.y =
+        fixed_gear.spatial_bundle.transform.translation.y + (fixed_gear.radius.0 + gear_2_radius);
+
+    // TODO: Each rotating gear needs to be attached to a fixed gear
+    commands.spawn(rotating_gear);
+    commands.spawn(fixed_gear);
 }
 
 fn update_pen_pos(
@@ -353,18 +376,7 @@ fn ui(
                     }
 
                     if ui.add(egui::Button::new("Add")).clicked() {
-                        commands.spawn((
-                            Gear,
-                            Rotation(90.0_f32.to_radians()),
-                            Speed(0.1),
-                            Radius(20.0),
-                            Pen(20.0),
-                            PenPos(Vec2::ZERO),
-                            GearColor(color::PURPLE_600),
-                            Line(Vec::new()),
-                            LineColor(color::EMERALD_600),
-                            SpatialBundle::default(),
-                        ));
+                        commands.spawn(RotatingGearBundle::default());
                     }
                 });
             });
