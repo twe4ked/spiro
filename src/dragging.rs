@@ -30,7 +30,9 @@ struct CursorWorldPos(Option<Vec2>);
 
 /// The current drag operation including the offset
 #[derive(Resource)]
-struct DragOperation(Vec2);
+struct DragOperation {
+    offset: Vec2,
+}
 
 #[derive(Resource)]
 struct Hovered {
@@ -64,9 +66,7 @@ fn hovered(
     q_draggable: Query<(Entity, &Transform, &Radius), With<Draggable>>,
 ) {
     // If the cursor is not within the primary window skip this system
-    let Some(cursor_world_pos) = cursor_world_pos.0 else {
-        return;
-    };
+    let cursor_world_pos = rq!(cursor_world_pos.0);
 
     for (entity, transform, &Radius(radius)) in &q_draggable {
         // Get the offset from the cursor to transform
@@ -87,36 +87,33 @@ fn hovered(
 fn start_drag(mut commands: Commands, hovered: Option<Res<Hovered>>) {
     // If hovered, start the drag operation and remember the offset of the cursor from the origin
     if let Some(hovered) = &hovered {
-        commands.insert_resource(DragOperation(hovered.offset));
+        commands.insert_resource(DragOperation {
+            offset: hovered.offset,
+        });
         commands.entity(hovered.entity).insert(Dragged);
     }
 }
 
-fn end_drag(mut commands: Commands, hovered: Option<Res<Hovered>>) {
+fn end_drag(mut commands: Commands, q_dragged: Query<Entity, With<Dragged>>) {
     commands.remove_resource::<DragOperation>();
 
-    if let Some(hovered) = &hovered {
-        commands.entity(hovered.entity).remove::<Dragged>();
+    for entity in &q_dragged {
+        commands.entity(entity).remove::<Dragged>();
     }
 }
 
 fn drag(
-    drag_offset: Res<DragOperation>,
+    drag_operation: Res<DragOperation>,
     cursor_world_pos: Res<CursorWorldPos>,
     mut q_draggable: Query<&mut Transform, With<Dragged>>,
 ) {
     // If the cursor is not within the primary window skip this system
-    let Some(cursor_world_pos) = cursor_world_pos.0 else {
-        return;
-    };
+    let cursor_world_pos = rq!(cursor_world_pos.0);
 
-    // Get the current Bevy logo transform
+    // Calculate the new translation based on cursor and drag offset
+    let new_translation = cursor_world_pos + drag_operation.offset;
+
     let mut transform = r!(q_draggable.get_single_mut());
-
-    // Calculate the new translation of the Bevy logo based on cursor and drag offset
-    let new_translation = cursor_world_pos + drag_offset.0;
-
-    // Update the translation of Bevy logo transform to new translation
     transform.translation = new_translation.extend(transform.translation.z);
 }
 
