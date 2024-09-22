@@ -126,7 +126,7 @@ fn ui(
                                     line.0 = Vec::new();
                                 }
 
-                                if ui.add(Button::new("Remove")).clicked() {
+                                if ui.add(Button::new("Remove gear")).clicked() {
                                     commands.entity(rotating_entity).despawn();
                                 }
 
@@ -148,11 +148,15 @@ fn ui(
                     }
 
                     ui.horizontal(|ui| {
-                        if ui.add(Button::new("Add")).clicked() {
+                        if ui.add(Button::new("Add gear")).clicked() {
                             // Add as child
                             commands.entity(fixed_entity).with_children(|parent| {
                                 parent.spawn(RotatingGearBundle::default());
                             });
+                        }
+
+                        if ui.add(Button::new("Remove spirograph")).clicked() {
+                            commands.entity(fixed_entity).despawn_recursive();
                         }
                     });
 
