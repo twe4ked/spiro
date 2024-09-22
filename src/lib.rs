@@ -5,6 +5,7 @@ use bevy_egui::EguiPlugin;
 
 mod dragging;
 mod spiro;
+mod ui;
 
 pub mod prelude {
     pub use bevy::color::palettes::tailwind as color;
@@ -45,6 +46,7 @@ impl Plugin for LibPlugin {
             .add_plugins((
                 //
                 spiro::plugin,
+                ui::plugin,
                 dragging::plugin,
             ))
             .add_systems(Startup, spawn_camera);
