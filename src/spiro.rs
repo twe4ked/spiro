@@ -20,7 +20,10 @@ pub struct Radius(pub f32);
 struct Pen(f32);
 
 #[derive(Component)]
-struct Color(Srgba);
+struct GearColor(Srgba);
+
+#[derive(Component)]
+struct LineColor(Srgba);
 
 #[derive(Component)]
 struct Line(Vec<Vec2>);
@@ -92,7 +95,7 @@ fn setup(mut commands: Commands) {
         Gear,
         Fixed,
         Radius(gear_1_radius),
-        Color(color::AMBER_600),
+        GearColor(color::AMBER_600),
         Draggable,
         SpatialBundle {
             transform: Transform {
@@ -111,8 +114,9 @@ fn setup(mut commands: Commands) {
         Radius(gear_2_radius),
         Pen(20.0),
         PenPos(Vec2::ZERO),
-        Color(color::PURPLE_600),
+        GearColor(color::PURPLE_600),
         Line(Vec::new()),
+        LineColor(color::EMERALD_600),
         SpatialBundle {
             transform: Transform {
                 translation: Vec3::new(
@@ -146,10 +150,10 @@ fn update_pen_pos(
 
 fn draw_gizmos(
     mut gizmos: Gizmos,
-    q_gears: Query<(&Transform, &Radius, &PenPos, &Color), With<Gear>>,
+    q_gears: Query<(&Transform, &Radius, &PenPos, &GearColor), With<Gear>>,
     settings: Res<Settings>,
 ) {
-    for (transform, Radius(radius), &PenPos(pen_pos), Color(color)) in &q_gears {
+    for (transform, Radius(radius), &PenPos(pen_pos), GearColor(color)) in &q_gears {
         if settings.gizmos_enabled {
             gizmos.circle_2d(transform.translation.xy(), *radius, *color);
             gizmos.circle_2d(transform.translation.xy(), 0.1, color::RED_600);
@@ -164,18 +168,21 @@ fn update_line(mut q_pen_pos: Query<(&mut Line, &PenPos)>) {
     }
 }
 
-fn draw_line(mut gizmos: Gizmos, rotating: Query<&Line>) {
-    for line in rotating.iter() {
-        // Save the pen location and draw the current line
-        gizmos.linestrip_gradient_2d(
-            line.0.iter().copied().zip(
-                RAINBOW
-                    .iter()
-                    .copied()
-                    .flat_map(|n| std::iter::repeat(n).take(4))
-                    .cycle(),
-            ),
-        );
+fn draw_line(mut gizmos: Gizmos, rotating: Query<(&Line, &LineColor)>) {
+    for (line, &LineColor(line_color)) in &rotating {
+        if line_color == Srgba::BLACK {
+            gizmos.linestrip_gradient_2d(
+                line.0.iter().copied().zip(
+                    RAINBOW
+                        .iter()
+                        .copied()
+                        .flat_map(|n| std::iter::repeat(n).take(4))
+                        .cycle(),
+                ),
+            );
+        } else {
+            gizmos.linestrip_2d(line.0.iter().copied(), line_color);
+        }
     }
 }
 
@@ -229,6 +236,7 @@ fn ui(
     mut rotating: Query<(
         Entity,
         &mut Line,
+        &mut LineColor,
         &mut Speed,
         &mut Pen,
         &mut Radius,
@@ -244,7 +252,7 @@ fn ui(
                 .inner_margin(10.0),
         )
         .show(contexts.ctx_mut(), |ui| {
-            for (i, (entity, mut line, mut speed, mut pen, mut radius, paused)) in
+            for (i, (entity, mut line, mut line_color, mut speed, mut pen, mut radius, paused)) in
                 rotating.iter_mut().enumerate()
             {
                 egui::Grid::new(format!("grid {}", i))
@@ -275,6 +283,33 @@ fn ui(
                                 .speed(0.1),
                         );
                         ui.end_row();
+
+                        {
+                            let [r, g, b, a] = Srgba::from(line_color.0).to_f32_array();
+                            let mut egui_color: egui::Rgba = egui::Rgba::from_srgba_unmultiplied(
+                                (r * 255.0) as u8,
+                                (g * 255.0) as u8,
+                                (b * 255.0) as u8,
+                                (a * 255.0) as u8,
+                            );
+
+                            ui.label("Line color");
+                            egui::widgets::color_picker::color_edit_button_rgba(
+                                ui,
+                                &mut egui_color,
+                                egui::color_picker::Alpha::Opaque,
+                            );
+                            ui.end_row();
+
+                            let [r, g, b, a] = egui_color.to_srgba_unmultiplied();
+                            line_color.0 = Color::srgba(
+                                r as f32 / 255.0,
+                                g as f32 / 255.0,
+                                b as f32 / 255.0,
+                                a as f32 / 255.0,
+                            )
+                            .into();
+                        }
                     });
 
                 if ui.add(egui::Button::new("Clear line")).clicked() {
@@ -310,8 +345,9 @@ fn ui(
                     Radius(20.0),
                     Pen(20.0),
                     PenPos(Vec2::ZERO),
-                    Color(color::PURPLE_600),
+                    GearColor(color::PURPLE_600),
                     Line(Vec::new()),
+                    LineColor(color::EMERALD_600),
                     SpatialBundle::default(),
                 ));
             }
