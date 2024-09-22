@@ -1,10 +1,10 @@
 use crate::{dragging::Draggable, prelude::*};
 
 #[derive(Component)]
-struct Fixed;
+pub struct Fixed;
 
 #[derive(Component)]
-struct Rotation(f32);
+pub struct Rotation(f32);
 
 #[derive(Component)]
 pub struct Speed(pub f32);
@@ -132,7 +132,7 @@ impl Default for RotatingGearBundle {
             pen_pos: PenPos(Vec2::ZERO),
             gear_color: GearColor(color::PURPLE_600),
             line: Line(Vec::new()),
-            line_color: LineColor(color::EMERALD_600),
+            line_color: LineColor(Srgba::BLACK),
             spatial_bundle: SpatialBundle::default(),
         }
     }

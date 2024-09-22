@@ -1,6 +1,8 @@
 use crate::{
     prelude::*,
-    spiro::{Line, LineColor, Paused, Pen, Radius, RotatingGearBundle, Settings, Speed},
+    spiro::{
+        Fixed, Line, LineColor, Paused, Pen, Radius, RotatingGearBundle, Rotation, Settings, Speed,
+    },
 };
 use bevy_egui::egui::CursorIcon;
 use bevy_egui::{egui, EguiContexts};
@@ -17,15 +19,19 @@ pub(super) fn plugin(app: &mut App) {
 fn ui(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    mut rotating: Query<(
-        Entity,
-        &mut Line,
-        &mut LineColor,
-        &mut Speed,
-        &mut Pen,
-        &mut Radius,
-        Option<&Paused>,
-    )>,
+    mut q_fixed: Query<&mut Radius, (With<Fixed>, Without<Rotation>)>,
+    mut q_rotating: Query<
+        (
+            Entity,
+            &mut Line,
+            &mut LineColor,
+            &mut Speed,
+            &mut Pen,
+            &mut Radius,
+            Option<&Paused>,
+        ),
+        (With<Rotation>, Without<Fixed>),
+    >,
     mut settings: ResMut<Settings>,
     cursor: Res<Cursor>,
     keys: Res<ButtonInput<KeyCode>>,
@@ -48,10 +54,28 @@ fn ui(
         )
         .show_animated(contexts.ctx_mut(), settings.show_sidebar, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
+                // Fixed gear
+                let mut radius = r!(q_fixed.get_single_mut());
+                egui::Grid::new(format!("grid"))
+                    .num_columns(2)
+                    .spacing([40.0, 4.0])
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label("Radius");
+                        ui.add(
+                            egui::DragValue::new(&mut radius.0)
+                                .range(1.0..=128.0)
+                                .speed(0.1),
+                        );
+                        ui.end_row();
+                    });
+                ui.separator();
+
+                // Rotating gears
                 for (
                     i,
                     (entity, mut line, mut line_color, mut speed, mut pen, mut radius, paused),
-                ) in rotating.iter_mut().enumerate()
+                ) in q_rotating.iter_mut().enumerate()
                 {
                     egui::Grid::new(format!("grid {}", i))
                         .num_columns(2)
@@ -139,7 +163,7 @@ fn ui(
                     ui.toggle_value(&mut settings.gizmos_enabled, "Enable gizmos");
 
                     if ui.add(egui::Button::new("Clear all")).clicked() {
-                        for (_entity, mut line, _, _, _, _, _) in rotating.iter_mut() {
+                        for (_entity, mut line, ..) in q_rotating.iter_mut() {
                             line.0 = Vec::new();
                         }
                     }
