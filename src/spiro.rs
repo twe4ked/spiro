@@ -10,7 +10,7 @@ pub struct Rotation(f32);
 pub struct Speed(pub f32);
 
 #[derive(Component)]
-struct Gear;
+pub struct Gear;
 
 #[derive(Component)]
 pub struct Radius(pub f32);
@@ -31,7 +31,7 @@ pub struct Line(pub Vec<Vec2>);
 pub struct Paused;
 
 #[derive(Component)]
-struct PenPos(Vec2);
+pub struct PenPos(Vec2);
 
 #[derive(Resource)]
 pub struct Settings {
@@ -85,13 +85,13 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[derive(Bundle)]
-struct FixedGearBundle {
-    gear: Gear,
-    radius: Radius,
-    gear_color: GearColor,
-    spatial_bundle: SpatialBundle,
-    fixed: Fixed,
-    draggable: Draggable,
+pub struct FixedGearBundle {
+    pub gear: Gear,
+    pub radius: Radius,
+    pub gear_color: GearColor,
+    pub spatial_bundle: SpatialBundle,
+    pub fixed: Fixed,
+    pub draggable: Draggable,
 }
 
 impl Default for FixedGearBundle {
@@ -109,16 +109,16 @@ impl Default for FixedGearBundle {
 
 #[derive(Bundle)]
 pub struct RotatingGearBundle {
-    gear: Gear,
-    radius: Radius,
-    gear_color: GearColor,
-    spatial_bundle: SpatialBundle,
-    rotation: Rotation,
-    speed: Speed,
-    pen: Pen,
-    pen_pos: PenPos,
-    line: Line,
-    line_color: LineColor,
+    pub gear: Gear,
+    pub radius: Radius,
+    pub gear_color: GearColor,
+    pub spatial_bundle: SpatialBundle,
+    pub rotation: Rotation,
+    pub speed: Speed,
+    pub pen: Pen,
+    pub pen_pos: PenPos,
+    pub line: Line,
+    pub line_color: LineColor,
 }
 
 impl Default for RotatingGearBundle {
@@ -149,9 +149,9 @@ fn setup(mut commands: Commands) {
     rotating_gear.spatial_bundle.transform.translation.y =
         fixed_gear.spatial_bundle.transform.translation.y + (fixed_gear.radius.0 + gear_2_radius);
 
-    // TODO: Each rotating gear needs to be attached to a fixed gear
-    commands.spawn(rotating_gear);
-    commands.spawn(fixed_gear);
+    commands.spawn(fixed_gear).with_children(|parent| {
+        parent.spawn(rotating_gear);
+    });
 }
 
 fn update_pen_pos(
@@ -234,24 +234,31 @@ fn new_angle_and_center(
 }
 
 fn rotate_gears(
-    q_fixed: Query<(&Transform, &Radius), (With<Fixed>, Without<Rotation>)>,
+    q_fixed: Query<(&Transform, &Radius, &Children), (With<Fixed>, Without<Rotation>)>,
     mut q_gears: Query<
         (&mut Transform, &mut Rotation, &Speed, &Radius),
         (With<Rotation>, Without<Fixed>, Without<Paused>),
     >,
 ) {
-    let (fixed_transform, &Radius(fixed_radius)) = r!(q_fixed.get_single());
+    for (fixed_transform, &Radius(fixed_radius), children) in &q_fixed {
+        for &child in children.iter() {
+            if let Ok((
+                mut rotating_transform,
+                mut rotation,
+                Speed(speed),
+                &Radius(rotating_radius),
+            )) = q_gears.get_mut(child)
+            {
+                // Move the rotating gear around the fixed gear
+                rotation.0 += speed;
 
-    for (mut rotating_transform, mut rotation, Speed(speed), &Radius(rotating_radius)) in
-        q_gears.iter_mut()
-    {
-        // Move the rotating gear around the fixed gear
-        rotation.0 += speed;
+                // Based on the rotation, calculate the new position and the new angle of the rotating gea,
+                let (angle, new_pos) =
+                    new_angle_and_center(rotation.0, fixed_radius, rotating_radius);
 
-        // Based on the rotation, calculate the new position and the new angle of the rotating gea,
-        let (angle, new_pos) = new_angle_and_center(rotation.0, fixed_radius, rotating_radius);
-
-        rotating_transform.translation = fixed_transform.translation + new_pos.extend(0.0);
-        rotating_transform.rotation = Quat::from_rotation_z(-angle);
+                rotating_transform.translation = fixed_transform.translation + new_pos.extend(0.0);
+                rotating_transform.rotation = Quat::from_rotation_z(-angle);
+            }
+        }
     }
 }

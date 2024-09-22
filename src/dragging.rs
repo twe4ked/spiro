@@ -33,10 +33,16 @@ struct CursorWorldPos(Option<Vec2>);
 struct DragOperation(Vec2);
 
 #[derive(Resource)]
-struct Hovered(Vec2);
+struct Hovered {
+    offset: Vec2,
+    entity: Entity,
+}
 
 #[derive(Component)]
 pub struct Draggable;
+
+#[derive(Component)]
+pub struct Dragged;
 
 // Project the cursor into the world coordinates and store it in a resource for easy use
 fn get_cursor_world_pos(
@@ -44,8 +50,8 @@ fn get_cursor_world_pos(
     q_primary_window: Query<&Window, With<PrimaryWindow>>,
     q_camera: Query<(&Camera, &GlobalTransform)>,
 ) {
-    let primary_window = q_primary_window.single();
-    let (main_camera, main_camera_transform) = q_camera.single();
+    let primary_window = r!(q_primary_window.get_single());
+    let (main_camera, main_camera_transform) = r!(q_camera.get_single());
     // Get the cursor position in the world
     cursor_world_pos.0 = primary_window
         .cursor_position()
@@ -55,42 +61,49 @@ fn get_cursor_world_pos(
 fn hovered(
     mut commands: Commands,
     cursor_world_pos: Res<CursorWorldPos>,
-    q_draggable: Query<(&Transform, &Radius), With<Draggable>>,
+    q_draggable: Query<(Entity, &Transform, &Radius), With<Draggable>>,
 ) {
     // If the cursor is not within the primary window skip this system
     let Some(cursor_world_pos) = cursor_world_pos.0 else {
         return;
     };
 
-    // Get the offset from the cursor to transform
-    let (transform, &Radius(radius)) = q_draggable.single();
-    let drag_offset = transform.translation.truncate() - cursor_world_pos;
+    for (entity, transform, &Radius(radius)) in &q_draggable {
+        // Get the offset from the cursor to transform
+        let offset = transform.translation.truncate() - cursor_world_pos;
 
-    // If the cursor is within the cricle the drag hovered operation and remember the offset of the
-    // cursor from the origin
-    if drag_offset.length() < radius {
-        commands.insert_resource(Hovered(drag_offset));
-    } else {
-        commands.remove_resource::<Hovered>();
+        // If the cursor is within the cricle the drag hovered operation and remember the offset of the
+        // cursor from the origin
+        if offset.length() < radius {
+            commands.insert_resource(Hovered { offset, entity });
+            break;
+        } else {
+            commands.remove_resource::<Hovered>();
+        }
     }
 }
 
 // Start the drag operation and record the offset we started dragging from
 fn start_drag(mut commands: Commands, hovered: Option<Res<Hovered>>) {
     // If hovered, start the drag operation and remember the offset of the cursor from the origin
-    if let Some(drag_offset) = &hovered {
-        commands.insert_resource(DragOperation(drag_offset.0));
+    if let Some(hovered) = &hovered {
+        commands.insert_resource(DragOperation(hovered.offset));
+        commands.entity(hovered.entity).insert(Dragged);
     }
 }
 
-fn end_drag(mut commands: Commands) {
+fn end_drag(mut commands: Commands, hovered: Option<Res<Hovered>>) {
     commands.remove_resource::<DragOperation>();
+
+    if let Some(hovered) = &hovered {
+        commands.entity(hovered.entity).remove::<Dragged>();
+    }
 }
 
 fn drag(
     drag_offset: Res<DragOperation>,
     cursor_world_pos: Res<CursorWorldPos>,
-    mut q_draggable: Query<&mut Transform, With<Draggable>>,
+    mut q_draggable: Query<&mut Transform, With<Dragged>>,
 ) {
     // If the cursor is not within the primary window skip this system
     let Some(cursor_world_pos) = cursor_world_pos.0 else {
@@ -98,7 +111,7 @@ fn drag(
     };
 
     // Get the current Bevy logo transform
-    let mut transform = q_draggable.single_mut();
+    let mut transform = r!(q_draggable.get_single_mut());
 
     // Calculate the new translation of the Bevy logo based on cursor and drag offset
     let new_translation = cursor_world_pos + drag_offset.0;
