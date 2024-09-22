@@ -42,6 +42,26 @@ impl Default for Settings {
     }
 }
 
+const RAINBOW: [Srgba; 17] = [
+    color::RED_600,
+    color::ORANGE_600,
+    color::AMBER_600,
+    color::YELLOW_600,
+    color::LIME_600,
+    color::GREEN_600,
+    color::EMERALD_600,
+    color::TEAL_600,
+    color::CYAN_600,
+    color::SKY_600,
+    color::BLUE_600,
+    color::INDIGO_600,
+    color::VIOLET_600,
+    color::PURPLE_600,
+    color::FUCHSIA_600,
+    color::PINK_600,
+    color::ROSE_600,
+];
+
 pub(super) fn plugin(app: &mut App) {
     app.observe(on_spawn_gears)
         .add_systems(FixedUpdate, (update, rotate_gears))
@@ -127,37 +147,12 @@ fn update(
         gizmos.circle_2d(new_pen, 1.0, color::PINK_600);
     }
 
-    let colors = vec![
-        color::SLATE_600,
-        color::GRAY_600,
-        color::ZINC_600,
-        color::NEUTRAL_600,
-        color::STONE_600,
-        color::RED_600,
-        color::ORANGE_600,
-        color::AMBER_600,
-        color::YELLOW_600,
-        color::LIME_600,
-        color::GREEN_600,
-        color::EMERALD_600,
-        color::TEAL_600,
-        color::CYAN_600,
-        color::SKY_600,
-        color::BLUE_600,
-        color::INDIGO_600,
-        color::VIOLET_600,
-        color::PURPLE_600,
-        color::FUCHSIA_600,
-        color::PINK_600,
-        color::ROSE_600,
-    ];
-
     // Save the pen location and draw the current line
     if settings.line_enabled {
         line.0.push(new_pen);
         gizmos.linestrip_gradient_2d(
             line.0.iter().copied().zip(
-                colors
+                RAINBOW
                     .iter()
                     .copied()
                     .flat_map(|n| std::iter::repeat(n).take(4))
