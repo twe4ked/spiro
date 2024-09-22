@@ -150,14 +150,17 @@ fn update_pen_pos(
 
 fn draw_gizmos(
     mut gizmos: Gizmos,
-    q_gears: Query<(&Transform, &Radius, &PenPos, &GearColor), With<Gear>>,
+    q_gears: Query<(&Transform, &Radius, Option<&PenPos>, &GearColor), With<Gear>>,
     settings: Res<Settings>,
 ) {
-    for (transform, Radius(radius), &PenPos(pen_pos), GearColor(color)) in &q_gears {
+    for (transform, Radius(radius), pen_pos, GearColor(color)) in &q_gears {
         if settings.gizmos_enabled {
             gizmos.circle_2d(transform.translation.xy(), *radius, *color);
             gizmos.circle_2d(transform.translation.xy(), 0.1, color::RED_600);
-            gizmos.circle_2d(pen_pos, 1.0, color::PINK_600);
+
+            if let Some(&PenPos(pos)) = pen_pos {
+                gizmos.circle_2d(pos, 1.0, color::PINK_600);
+            }
         }
     }
 }
