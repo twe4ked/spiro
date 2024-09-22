@@ -16,7 +16,13 @@ pub struct Cursor(pub Option<CursorIcon>);
 pub(super) fn plugin(app: &mut App) {
     app //
         .insert_resource(Cursor(None))
-        .add_systems(Update, (ui, update_cursor_icon));
+        .add_systems(Update, (input, ui, update_cursor_icon));
+}
+
+fn input(mut settings: ResMut<Settings>, keys: Res<ButtonInput<KeyCode>>) {
+    if keys.just_pressed(KeyCode::Escape) {
+        settings.show_sidebar = !settings.show_sidebar;
+    }
 }
 
 fn ui(
@@ -40,18 +46,7 @@ fn ui(
         (With<Rotation>, Without<Fixed>),
     >,
     mut settings: ResMut<Settings>,
-    cursor: Res<Cursor>,
-    keys: Res<ButtonInput<KeyCode>>,
 ) {
-    if keys.just_pressed(KeyCode::Escape) {
-        settings.show_sidebar = !settings.show_sidebar;
-    }
-
-    if let Some(cursor_icon) = cursor.0 {
-        let ctx = contexts.ctx_mut();
-        ctx.set_cursor_icon(cursor_icon);
-    }
-
     SidePanel::left("SPIRO")
         .resizable(false)
         .frame(Frame::none().fill(Color32::BLACK).inner_margin(10.0))
@@ -89,6 +84,7 @@ fn ui(
                             paused,
                         )) = q_rotating.get_mut(*child)
                         {
+                            // Gear settings
                             Grid::new(format!("grid {i_fixed} {i}"))
                                 .num_columns(2)
                                 .spacing([40.0, 4.0])
@@ -121,6 +117,7 @@ fn ui(
                                     ui.end_row();
                                 });
 
+                            // Gear controls
                             ui.horizontal(|ui| {
                                 if ui.add(Button::new("Clear line")).clicked() {
                                     line.0 = Vec::new();
@@ -147,9 +144,9 @@ fn ui(
                         }
                     }
 
+                    // Spirograph controls
                     ui.horizontal(|ui| {
                         if ui.add(Button::new("Add gear")).clicked() {
-                            // Add as child
                             commands.entity(fixed_entity).with_children(|parent| {
                                 parent.spawn(RotatingGearBundle::default());
                             });
@@ -163,6 +160,7 @@ fn ui(
                     ui.separator();
                 }
 
+                // Global controls
                 ui.horizontal(|ui| {
                     ui.toggle_value(&mut settings.gizmos_enabled, "Enable gizmos");
 
