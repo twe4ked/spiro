@@ -25,19 +25,21 @@ struct Color(Srgba);
 #[derive(Component)]
 struct Line(Vec<Vec2>);
 
+#[derive(Component)]
+struct Paused;
+
+#[derive(Component)]
+struct PenPos(Vec2);
+
 #[derive(Resource)]
 struct Settings {
-    paused: bool,
     gizmos_enabled: bool,
-    line_enabled: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            paused: false,
             gizmos_enabled: true,
-            line_enabled: true,
         }
     }
 }
@@ -64,8 +66,18 @@ const RAINBOW: [Srgba; 17] = [
 
 pub(super) fn plugin(app: &mut App) {
     app //
-        .add_systems(FixedUpdate, (update, rotate_gears))
-        .add_systems(Update, (render, ui))
+        .add_systems(
+            FixedUpdate,
+            (
+                rotate_gears,
+                update_pen_pos,
+                update_line,
+                draw_line,
+                draw_gizmos,
+            )
+                .chain(),
+        )
+        .add_systems(Update, ui)
         .add_systems(Startup, setup);
 }
 
@@ -100,6 +112,7 @@ fn setup(mut commands: Commands) {
         },
         Radius(gear_2_radius),
         Pen(20.0),
+        PenPos(Vec2::ZERO),
         Color(color::PURPLE_600),
         Line(Vec::new()),
         SpatialBundle {
@@ -116,47 +129,64 @@ fn setup(mut commands: Commands) {
     ));
 }
 
-fn update(
+fn update_pen_pos(
     mut gizmos: Gizmos,
-    mut rotating: Query<(&mut Line, &Transform, &Pen), With<Rotation>>,
+    mut rotating: Query<(&mut PenPos, &Transform, &Pen), With<Rotation>>,
     settings: Res<Settings>,
 ) {
-    for (mut line, rotating_transform, &Pen(pen_dist)) in rotating.iter_mut() {
+    for (mut pen_pos, rotating_transform, &Pen(pen_dist)) in rotating.iter_mut() {
         if settings.gizmos_enabled {
             gizmos.axes_2d(*rotating_transform, 10.0);
         }
 
         // Calculate pen location
-        let new_pen = {
-            let angle = rotating_transform.rotation.to_euler(EulerRot::XYZ).2;
-            rotating_transform.translation.xy()
-                + Vec2::from_angle(angle + 90.0_f32.to_radians()) * pen_dist
-        };
-        // Draw pen location
-        if settings.gizmos_enabled {
-            gizmos.circle_2d(new_pen, 1.0, color::PINK_600);
-        }
+        let angle = rotating_transform.rotation.to_euler(EulerRot::XYZ).2;
+        pen_pos.0 = rotating_transform.translation.xy()
+            + Vec2::from_angle(angle + 90.0_f32.to_radians()) * pen_dist;
+    }
+}
 
-        // Save the pen location and draw the current line
-        if settings.line_enabled {
-            line.0.push(new_pen);
-            gizmos.linestrip_gradient_2d(
-                line.0.iter().copied().zip(
-                    RAINBOW
-                        .iter()
-                        .copied()
-                        .flat_map(|n| std::iter::repeat(n).take(4))
-                        .cycle(),
-                ),
-            );
+fn draw_gizmos(
+    mut gizmos: Gizmos,
+    q_gears: Query<(&Transform, &Radius, &PenPos, &Color), With<Gear>>,
+    settings: Res<Settings>,
+) {
+    for (transform, Radius(radius), &PenPos(pen_pos), Color(color)) in &q_gears {
+        if settings.gizmos_enabled {
+            gizmos.circle_2d(transform.translation.xy(), *radius, *color);
+            gizmos.circle_2d(transform.translation.xy(), 0.1, color::RED_600);
+            gizmos.circle_2d(pen_pos, 1.0, color::PINK_600);
         }
+    }
+}
+
+fn update_line(mut q_pen_pos: Query<(&mut Line, &PenPos)>) {
+    for (mut line, &PenPos(pen_pos)) in q_pen_pos.iter_mut() {
+        line.0.push(pen_pos);
+    }
+}
+
+fn draw_line(mut gizmos: Gizmos, rotating: Query<&Line>) {
+    for line in rotating.iter() {
+        // Save the pen location and draw the current line
+        gizmos.linestrip_gradient_2d(
+            line.0.iter().copied().zip(
+                RAINBOW
+                    .iter()
+                    .copied()
+                    .flat_map(|n| std::iter::repeat(n).take(4))
+                    .cycle(),
+            ),
+        );
     }
 }
 
 fn rotate_gears(
     fixed: Query<(&Transform, &Radius), (With<Fixed>, Without<Rotation>)>,
-    mut rotating: Query<(&mut Transform, &mut Rotation, &Radius), (With<Rotation>, Without<Fixed>)>,
-    settings: Res<Settings>,
+    mut rotating: Query<
+        (&mut Transform, &mut Rotation, &Radius),
+        (With<Rotation>, Without<Fixed>, Without<Paused>),
+    >,
 ) {
     let (fixed_transform, Radius(fixed_radius)) = r!(fixed.get_single());
     for (mut rotating_transform, mut rotation, Radius(rotating_radius)) in rotating.iter_mut() {
@@ -180,32 +210,24 @@ fn rotate_gears(
         };
 
         // Move the small circle around the circle
-        if !settings.paused {
-            rotation.angle += rotation.speed;
-        }
+        rotation.angle += rotation.speed;
 
         rotating_transform.translation = fixed_transform.translation + center.extend(0.0);
         rotating_transform.rotation = Quat::from_rotation_z(-angle);
     }
 }
 
-fn render(
-    mut gizmos: Gizmos,
-    gears: Query<(&Transform, &Radius, &Color), With<Gear>>,
-    settings: Res<Settings>,
-) {
-    for (transform, Radius(radius), Color(color)) in &gears {
-        if settings.gizmos_enabled {
-            gizmos.circle_2d(transform.translation.xy(), *radius, *color);
-            gizmos.circle_2d(transform.translation.xy(), 0.1, color::RED_600);
-        }
-    }
-}
-
 fn ui(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    mut rotating: Query<(Entity, &mut Line, &mut Rotation, &mut Pen, &mut Radius)>,
+    mut rotating: Query<(
+        Entity,
+        &mut Line,
+        &mut Rotation,
+        &mut Pen,
+        &mut Radius,
+        Option<&Paused>,
+    )>,
     mut settings: ResMut<Settings>,
 ) {
     egui::SidePanel::left("SPIRO")
@@ -216,7 +238,7 @@ fn ui(
                 .inner_margin(10.0),
         )
         .show(contexts.ctx_mut(), |ui| {
-            for (i, (entity, mut line, mut rotation, mut pen, mut radius)) in
+            for (i, (entity, mut line, mut rotation, mut pen, mut radius, paused)) in
                 rotating.iter_mut().enumerate()
             {
                 egui::Grid::new(format!("grid {}", i))
@@ -257,11 +279,22 @@ fn ui(
                     commands.entity(entity).despawn();
                 }
 
+                {
+                    let mut toggle = paused.is_some();
+                    ui.toggle_value(&mut toggle, "Pause");
+                    if toggle != paused.is_some() {
+                        if toggle {
+                            commands.entity(entity).insert(Paused);
+                        } else {
+                            commands.entity(entity).remove::<Paused>();
+                        }
+                    }
+                }
+
                 ui.separator();
             }
 
-            ui.checkbox(&mut settings.paused, "Pause");
-            ui.checkbox(&mut settings.gizmos_enabled, "Enable gizmos");
+            ui.toggle_value(&mut settings.gizmos_enabled, "Enable gizmos");
 
             if ui.add(egui::Button::new("Add")).clicked() {
                 commands.spawn((
@@ -272,6 +305,7 @@ fn ui(
                     },
                     Radius(20.0),
                     Pen(20.0),
+                    PenPos(Vec2::ZERO),
                     Color(color::PURPLE_600),
                     Line(Vec::new()),
                     SpatialBundle::default(),

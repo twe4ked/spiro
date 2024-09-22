@@ -6,18 +6,20 @@ use bevy::{
 };
 
 pub(super) fn plugin(app: &mut App) {
-    app.insert_resource(CursorWorldPos(None)).add_systems(
-        Update,
-        (
-            get_cursor_world_pos,
+    app //
+        .insert_resource(CursorWorldPos(None))
+        .add_systems(
+            Update,
             (
-                start_drag.run_if(input_just_pressed(MouseButton::Left)),
-                end_drag.run_if(input_just_released(MouseButton::Left)),
-                drag.run_if(resource_exists::<DragOperation>),
-            ),
-        )
-            .chain(),
-    );
+                get_cursor_world_pos,
+                (
+                    start_drag.run_if(input_just_pressed(MouseButton::Left)),
+                    end_drag.run_if(input_just_released(MouseButton::Left)),
+                    drag.run_if(resource_exists::<DragOperation>),
+                ),
+            )
+                .chain(),
+        );
 }
 
 /// The projected 2D world coordinates of the cursor (if it's within primary window bounds).
