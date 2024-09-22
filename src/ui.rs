@@ -21,7 +21,12 @@ fn ui(
         Option<&Paused>,
     )>,
     mut settings: ResMut<Settings>,
+    keys: Res<ButtonInput<KeyCode>>,
 ) {
+    if keys.just_pressed(KeyCode::Escape) {
+        settings.show_sidebar = !settings.show_sidebar;
+    }
+
     egui::SidePanel::left("SPIRO")
         .resizable(false)
         .frame(
@@ -29,7 +34,7 @@ fn ui(
                 .fill(egui::Color32::BLACK)
                 .inner_margin(10.0),
         )
-        .show(contexts.ctx_mut(), |ui| {
+        .show_animated(contexts.ctx_mut(), settings.show_sidebar, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for (
                     i,
@@ -131,6 +136,10 @@ fn ui(
                         commands.spawn(RotatingGearBundle::default());
                     }
                 });
+
+                ui.separator();
+
+                ui.label("Hit escape to toggle sidebar");
             });
         });
 }

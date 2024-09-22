@@ -36,12 +36,14 @@ struct PenPos(Vec2);
 #[derive(Resource)]
 pub struct Settings {
     pub gizmos_enabled: bool,
+    pub show_sidebar: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             gizmos_enabled: true,
+            show_sidebar: true,
         }
     }
 }
