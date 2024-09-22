@@ -1,9 +1,9 @@
-use crate::prelude::*;
-use crate::spiro::Radius;
+use crate::{prelude::*, spiro::Radius, ui::Cursor};
 use bevy::{
     input::common_conditions::{input_just_pressed, input_just_released},
     window::PrimaryWindow,
 };
+use bevy_egui::egui::CursorIcon;
 
 pub(super) fn plugin(app: &mut App) {
     app //
@@ -13,9 +13,11 @@ pub(super) fn plugin(app: &mut App) {
             (
                 get_cursor_world_pos,
                 (
+                    hovered,
                     start_drag.run_if(input_just_pressed(MouseButton::Left)),
                     end_drag.run_if(input_just_released(MouseButton::Left)),
                     drag.run_if(resource_exists::<DragOperation>),
+                    cursor,
                 ),
             )
                 .chain(),
@@ -29,6 +31,9 @@ struct CursorWorldPos(Option<Vec2>);
 /// The current drag operation including the offset
 #[derive(Resource)]
 struct DragOperation(Vec2);
+
+#[derive(Resource)]
+struct Hovered(Vec2);
 
 #[derive(Component)]
 pub struct Draggable;
@@ -47,8 +52,7 @@ fn get_cursor_world_pos(
         .and_then(|cursor_pos| main_camera.viewport_to_world_2d(main_camera_transform, cursor_pos));
 }
 
-// Start the drag operation and record the offset we started dragging from
-fn start_drag(
+fn hovered(
     mut commands: Commands,
     cursor_world_pos: Res<CursorWorldPos>,
     q_draggable: Query<(&Transform, &Radius), With<Draggable>>,
@@ -62,10 +66,20 @@ fn start_drag(
     let (transform, &Radius(radius)) = q_draggable.single();
     let drag_offset = transform.translation.truncate() - cursor_world_pos;
 
-    // If the cursor is within the cricle start the drag operation and remember the offset of the
+    // If the cursor is within the cricle the drag hovered operation and remember the offset of the
     // cursor from the origin
     if drag_offset.length() < radius {
-        commands.insert_resource(DragOperation(drag_offset));
+        commands.insert_resource(Hovered(drag_offset));
+    } else {
+        commands.remove_resource::<Hovered>();
+    }
+}
+
+// Start the drag operation and record the offset we started dragging from
+fn start_drag(mut commands: Commands, hovered: Option<Res<Hovered>>) {
+    // If hovered, start the drag operation and remember the offset of the cursor from the origin
+    if let Some(drag_offset) = &hovered {
+        commands.insert_resource(DragOperation(drag_offset.0));
     }
 }
 
@@ -91,4 +105,18 @@ fn drag(
 
     // Update the translation of Bevy logo transform to new translation
     transform.translation = new_translation.extend(transform.translation.z);
+}
+
+fn cursor(
+    mut cursor: ResMut<Cursor>,
+    drag: Option<Res<DragOperation>>,
+    hovered: Option<Res<Hovered>>,
+) {
+    cursor.0 = if drag.is_some() {
+        Some(CursorIcon::Grabbing)
+    } else if hovered.is_some() {
+        Some(CursorIcon::Grab)
+    } else {
+        None
+    };
 }

@@ -2,10 +2,16 @@ use crate::{
     prelude::*,
     spiro::{Line, LineColor, Paused, Pen, Radius, RotatingGearBundle, Settings, Speed},
 };
+use bevy_egui::egui::CursorIcon;
 use bevy_egui::{egui, EguiContexts};
 
+#[derive(Resource)]
+pub struct Cursor(pub Option<CursorIcon>);
+
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Update, ui);
+    app //
+        .insert_resource(Cursor(None))
+        .add_systems(Update, (ui, update_cursor_icon));
 }
 
 fn ui(
@@ -21,10 +27,16 @@ fn ui(
         Option<&Paused>,
     )>,
     mut settings: ResMut<Settings>,
+    cursor: Res<Cursor>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {
     if keys.just_pressed(KeyCode::Escape) {
         settings.show_sidebar = !settings.show_sidebar;
+    }
+
+    if let Some(cursor_icon) = cursor.0 {
+        let ctx = contexts.ctx_mut();
+        ctx.set_cursor_icon(cursor_icon);
     }
 
     egui::SidePanel::left("SPIRO")
@@ -142,4 +154,11 @@ fn ui(
                 ui.label("Hit escape to toggle sidebar");
             });
         });
+}
+
+fn update_cursor_icon(mut contexts: EguiContexts, cursor: Res<Cursor>) {
+    if let Some(cursor_icon) = cursor.0 {
+        let ctx = contexts.ctx_mut();
+        ctx.set_cursor_icon(cursor_icon);
+    }
 }
