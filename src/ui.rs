@@ -92,19 +92,19 @@ fn ui(
                                 .show(ui, |mut ui| {
                                     ui.label("Speed");
                                     ui.add(
-                                        DragValue::new(&mut speed.0).range(0.01..=1.0).speed(0.01),
+                                        DragValue::new(&mut speed.0).range(0.0..=128.0).speed(0.1),
                                     );
                                     ui.end_row();
 
                                     ui.label("Radius");
                                     ui.add(
-                                        DragValue::new(&mut radius.0).range(1.0..=128.0).speed(0.1),
+                                        DragValue::new(&mut radius.0).range(0.0..=128.0).speed(0.1),
                                     );
                                     ui.end_row();
 
                                     ui.label("Pen distance");
                                     ui.add(
-                                        DragValue::new(&mut pen.0).range(1.0..=128.0).speed(0.1),
+                                        DragValue::new(&mut pen.0).range(0.0..=128.0).speed(0.1),
                                     );
                                     ui.end_row();
 

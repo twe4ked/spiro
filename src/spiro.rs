@@ -138,7 +138,7 @@ impl Default for RotatingGearBundle {
         Self {
             gear: Gear,
             rotation: Rotation(0.0),
-            speed: Speed(0.1),
+            speed: Speed(8.0),
             radius: Radius(27.5),
             pen: Pen(20.0),
             pen_pos: PenPos(Vec2::ZERO),
@@ -245,6 +245,7 @@ fn rotate_gears(
         (&mut Transform, &mut Rotation, &Speed, &Radius),
         (With<Rotation>, Without<Fixed>, Without<Paused>),
     >,
+    time: Res<Time>,
 ) {
     for (fixed_transform, &Radius(fixed_radius), children) in &q_fixed {
         for &child in children.iter() {
@@ -256,7 +257,7 @@ fn rotate_gears(
             )) = q_gears.get_mut(child)
             {
                 // Move the rotating gear around the fixed gear
-                rotation.0 += speed;
+                rotation.0 += speed * time.delta().as_secs_f32();
 
                 // Based on the rotation, calculate the new position and the new angle of the rotating gea,
                 let (angle, new_pos) =
