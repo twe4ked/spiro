@@ -1,11 +1,14 @@
 use crate::{
     prelude::*,
     spiro::{
-        Fixed, Line, LineColor, Paused, Pen, Radius, RotatingGearBundle, Rotation, Settings, Speed,
+        Fixed, GearColor, Line, LineColor, Paused, Pen, Radius, RotatingGearBundle, Rotation,
+        Settings, Speed,
     },
 };
-use bevy_egui::egui::CursorIcon;
-use bevy_egui::{egui, EguiContexts};
+use bevy_egui::{
+    egui::{self, Button, Color32, CursorIcon, DragValue, Frame, Grid, ScrollArea, SidePanel, Ui},
+    EguiContexts,
+};
 
 #[derive(Resource)]
 pub struct Cursor(pub Option<CursorIcon>);
@@ -19,12 +22,13 @@ pub(super) fn plugin(app: &mut App) {
 fn ui(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    mut q_fixed: Query<&mut Radius, (With<Fixed>, Without<Rotation>)>,
+    mut q_fixed: Query<(&mut Radius, &mut GearColor), (With<Fixed>, Without<Rotation>)>,
     mut q_rotating: Query<
         (
             Entity,
             &mut Line,
             &mut LineColor,
+            &mut GearColor,
             &mut Speed,
             &mut Pen,
             &mut Radius,
@@ -45,28 +49,24 @@ fn ui(
         ctx.set_cursor_icon(cursor_icon);
     }
 
-    egui::SidePanel::left("SPIRO")
+    SidePanel::left("SPIRO")
         .resizable(false)
-        .frame(
-            egui::Frame::none()
-                .fill(egui::Color32::BLACK)
-                .inner_margin(10.0),
-        )
+        .frame(Frame::none().fill(Color32::BLACK).inner_margin(10.0))
         .show_animated(contexts.ctx_mut(), settings.show_sidebar, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
+            ScrollArea::vertical().show(ui, |ui| {
                 // Fixed gear
-                let mut radius = r!(q_fixed.get_single_mut());
-                egui::Grid::new(format!("grid"))
+                let (mut radius, mut gear_color) = r!(q_fixed.get_single_mut());
+                Grid::new(format!("grid"))
                     .num_columns(2)
                     .spacing([40.0, 4.0])
                     .striped(true)
-                    .show(ui, |ui| {
+                    .show(ui, |mut ui| {
                         ui.label("Radius");
-                        ui.add(
-                            egui::DragValue::new(&mut radius.0)
-                                .range(1.0..=128.0)
-                                .speed(0.1),
-                        );
+                        ui.add(DragValue::new(&mut radius.0).range(1.0..=128.0).speed(0.1));
+                        ui.end_row();
+
+                        ui.label("Gear color");
+                        color_picker(&mut ui, &mut gear_color.0);
                         ui.end_row();
                     });
                 ui.separator();
@@ -74,49 +74,50 @@ fn ui(
                 // Rotating gears
                 for (
                     i,
-                    (entity, mut line, mut line_color, mut speed, mut pen, mut radius, paused),
+                    (
+                        entity,
+                        mut line,
+                        mut line_color,
+                        mut gear_color,
+                        mut speed,
+                        mut pen,
+                        mut radius,
+                        paused,
+                    ),
                 ) in q_rotating.iter_mut().enumerate()
                 {
-                    egui::Grid::new(format!("grid {}", i))
+                    Grid::new(format!("grid {}", i))
                         .num_columns(2)
                         .spacing([40.0, 4.0])
                         .striped(true)
                         .show(ui, |mut ui| {
                             ui.label("Speed");
-                            ui.add(
-                                egui::DragValue::new(&mut speed.0)
-                                    .range(0.01..=1.0)
-                                    .speed(0.01),
-                            );
+                            ui.add(DragValue::new(&mut speed.0).range(0.01..=1.0).speed(0.01));
                             ui.end_row();
 
                             ui.label("Radius");
-                            ui.add(
-                                egui::DragValue::new(&mut radius.0)
-                                    .range(1.0..=128.0)
-                                    .speed(0.1),
-                            );
+                            ui.add(DragValue::new(&mut radius.0).range(1.0..=128.0).speed(0.1));
                             ui.end_row();
 
                             ui.label("Pen distance");
-                            ui.add(
-                                egui::DragValue::new(&mut pen.0)
-                                    .range(1.0..=128.0)
-                                    .speed(0.1),
-                            );
+                            ui.add(DragValue::new(&mut pen.0).range(1.0..=128.0).speed(0.1));
                             ui.end_row();
 
                             ui.label("Line color");
                             color_picker(&mut ui, &mut line_color.0);
                             ui.end_row();
+
+                            ui.label("Gear color");
+                            color_picker(&mut ui, &mut gear_color.0);
+                            ui.end_row();
                         });
 
                     ui.horizontal(|ui| {
-                        if ui.add(egui::Button::new("Clear line")).clicked() {
+                        if ui.add(Button::new("Clear line")).clicked() {
                             line.0 = Vec::new();
                         }
 
-                        if ui.add(egui::Button::new("Remove")).clicked() {
+                        if ui.add(Button::new("Remove")).clicked() {
                             commands.entity(entity).despawn();
                         }
 
@@ -139,13 +140,13 @@ fn ui(
                 ui.horizontal(|ui| {
                     ui.toggle_value(&mut settings.gizmos_enabled, "Enable gizmos");
 
-                    if ui.add(egui::Button::new("Clear all")).clicked() {
+                    if ui.add(Button::new("Clear all")).clicked() {
                         for (_entity, mut line, ..) in q_rotating.iter_mut() {
                             line.0 = Vec::new();
                         }
                     }
 
-                    if ui.add(egui::Button::new("Add")).clicked() {
+                    if ui.add(Button::new("Add")).clicked() {
                         commands.spawn(RotatingGearBundle::default());
                     }
                 });
@@ -164,7 +165,7 @@ fn update_cursor_icon(mut contexts: EguiContexts, cursor: Res<Cursor>) {
     }
 }
 
-fn color_picker(mut ui: &mut egui::Ui, line_color: &mut Srgba) {
+fn color_picker(mut ui: &mut Ui, line_color: &mut Srgba) {
     let [r, g, b, a] = line_color.to_f32_array();
     let mut egui_color: egui::Rgba = egui::Rgba::from_srgba_unmultiplied(
         (r * 255.0) as u8,

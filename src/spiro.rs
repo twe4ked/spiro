@@ -19,7 +19,7 @@ pub struct Radius(pub f32);
 pub struct Pen(pub f32);
 
 #[derive(Component)]
-struct GearColor(Srgba);
+pub struct GearColor(pub Srgba);
 
 #[derive(Component)]
 pub struct LineColor(pub Srgba);
