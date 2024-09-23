@@ -133,6 +133,10 @@ fn ui(
                                                     ui.label("Gear color");
                                                     color_picker(&mut ui, &mut gear_color.0);
                                                     ui.end_row();
+
+                                                    ui.label("Line length");
+                                                    ui.label(format!("{}", line.0.len()));
+                                                    ui.end_row();
                                                 });
 
                                             // Gear controls

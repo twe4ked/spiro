@@ -94,6 +94,7 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(Bundle)]
 pub struct FixedGearBundle {
     pub gear: Gear,
+    // TODO: Different fixed shapes
     pub radius: Radius,
     pub gear_color: GearColor,
     pub transform_bundle: TransformBundle,
@@ -235,7 +236,7 @@ fn draw_gizmos(
     }
 }
 
-fn update_line(mut q_pen_pos: Query<(&mut Line, &PenPos)>) {
+fn update_line(mut q_pen_pos: Query<(&mut Line, &PenPos), Without<Paused>>) {
     for (mut line, &PenPos(pen_pos)) in q_pen_pos.iter_mut() {
         line.0.push(pen_pos);
     }
