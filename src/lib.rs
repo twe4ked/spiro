@@ -54,7 +54,5 @@ impl Plugin for LibPlugin {
 }
 
 fn spawn_camera(mut commands: Commands) {
-    let mut camera_bundle = Camera2dBundle::default();
-    camera_bundle.projection.scale = 0.5;
-    commands.spawn(camera_bundle);
+    commands.spawn(Camera2dBundle::default());
 }

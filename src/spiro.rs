@@ -102,7 +102,7 @@ impl Default for FixedGearBundle {
             gear: Gear,
             fixed: Fixed,
             draggable: Draggable,
-            radius: Radius(75.0),
+            radius: Radius(150.0),
             gear_color: GearColor(color::AMBER_600),
             transform_bundle: TransformBundle::default(),
         }
@@ -113,14 +113,13 @@ impl FixedGearBundle {
     pub fn rand(bounds: Vec2) -> Self {
         let mut rng = rand::thread_rng();
 
-        // 0.25 here because our camera projection is 0.5
-        let half_extents = 0.25 * bounds;
+        let half_extents = 0.5 * bounds;
         let translation = Vec3::new(
             rng.gen_range(-half_extents.x..half_extents.x),
             rng.gen_range(-half_extents.y..half_extents.y),
             0.0,
         );
-        let radius = rng.gen_range(1.0..128.0);
+        let radius = rng.gen_range(1.0..256.0);
         let gear_color = RAINBOW[rng.gen_range(0..RAINBOW.len())];
 
         Self {
@@ -155,8 +154,8 @@ impl Default for RotatingGearBundle {
             gear: Gear,
             rotation: Rotation(0.0),
             speed: Speed(8.0),
-            radius: Radius(27.5),
-            pen: Pen(20.0),
+            radius: Radius(55.0),
+            pen: Pen(40.0),
             pen_pos: PenPos(Vec2::ZERO),
             gear_color: GearColor(color::PURPLE_600),
             line: Line(Vec::new()),
@@ -172,9 +171,9 @@ impl RotatingGearBundle {
 
         let rotation = rng.gen_range(0.0..TAU);
         let speed = rng.gen_range(0.1..16.0);
-        let radius = rng.gen_range(1.0..64.0);
+        let radius = rng.gen_range(1.0..128.0);
         let gear_color = RAINBOW[rng.gen_range(0..RAINBOW.len())];
-        let pen_dis = rng.gen_range(0.0..32.0);
+        let pen_dis = rng.gen_range(0.0..64.0);
 
         Self {
             rotation: Rotation(rotation),
