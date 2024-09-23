@@ -1,4 +1,6 @@
 use crate::{dragging::Draggable, prelude::*};
+use rand::Rng;
+use std::f32::consts::TAU;
 
 #[derive(Component)]
 pub struct Fixed;
@@ -108,12 +110,26 @@ impl Default for FixedGearBundle {
 }
 
 impl FixedGearBundle {
-    pub fn new(translation: Vec3) -> Self {
+    pub fn rand(bounds: Vec2) -> Self {
+        let mut rng = rand::thread_rng();
+
+        // 0.25 here because our camera projection is 0.5
+        let half_extents = 0.25 * bounds;
+        let translation = Vec3::new(
+            rng.gen_range(-half_extents.x..half_extents.x),
+            rng.gen_range(-half_extents.y..half_extents.y),
+            0.0,
+        );
+        let radius = rng.gen_range(1.0..128.0);
+        let gear_color = RAINBOW[rng.gen_range(0..RAINBOW.len())];
+
         Self {
             transform_bundle: TransformBundle {
                 local: Transform::from_translation(translation),
                 ..default()
             },
+            radius: Radius(radius),
+            gear_color: GearColor(gear_color),
             ..default()
         }
     }
@@ -146,6 +162,27 @@ impl Default for RotatingGearBundle {
             line: Line(Vec::new()),
             line_color: LineColor(Srgba::BLACK),
             transform_bundle: TransformBundle::default(),
+        }
+    }
+}
+
+impl RotatingGearBundle {
+    pub fn rand() -> Self {
+        let mut rng = rand::thread_rng();
+
+        let rotation = rng.gen_range(0.0..TAU);
+        let speed = rng.gen_range(0.1..16.0);
+        let radius = rng.gen_range(1.0..64.0);
+        let gear_color = RAINBOW[rng.gen_range(0..RAINBOW.len())];
+        let pen_dis = rng.gen_range(0.0..32.0);
+
+        Self {
+            rotation: Rotation(rotation),
+            speed: Speed(speed),
+            radius: Radius(radius),
+            gear_color: GearColor(gear_color),
+            pen: Pen(pen_dis),
+            ..default()
         }
     }
 }

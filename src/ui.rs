@@ -5,6 +5,7 @@ use crate::{
         RotatingGearBundle, Rotation, Settings, Speed,
     },
 };
+use bevy::window::PrimaryWindow;
 use bevy_egui::{
     egui::{self, Button, Color32, CursorIcon, DragValue, Frame, Grid, ScrollArea, SidePanel, Ui},
     EguiContexts,
@@ -45,6 +46,7 @@ fn ui(
         ),
         (With<Rotation>, Without<Fixed>),
     >,
+    q_primary_window: Query<&Window, With<PrimaryWindow>>,
     mut settings: ResMut<Settings>,
 ) {
     SidePanel::left("SPIRO")
@@ -159,7 +161,7 @@ fn ui(
                         ui.horizontal(|ui| {
                             if ui.add(Button::new("Add gear")).clicked() {
                                 commands.entity(fixed_entity).with_children(|parent| {
-                                    parent.spawn(RotatingGearBundle::default());
+                                    parent.spawn(RotatingGearBundle::rand());
                                 });
                             }
 
@@ -183,10 +185,12 @@ fn ui(
                     }
 
                     if ui.add(Button::new("Add")).clicked() {
+                        let primary_window = r!(q_primary_window.get_single());
+
                         commands
-                            .spawn(FixedGearBundle::new(Vec3::ZERO.with_x(200.0)))
+                            .spawn(FixedGearBundle::rand(primary_window.size()))
                             .with_children(|parent| {
-                                parent.spawn(RotatingGearBundle::default());
+                                parent.spawn(RotatingGearBundle::rand());
                             });
                     }
                 });
