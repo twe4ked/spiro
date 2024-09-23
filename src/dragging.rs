@@ -47,7 +47,10 @@ pub struct Draggable;
 pub struct Dragged;
 
 #[derive(Event)]
-pub struct DragFinished;
+pub struct DragStart;
+
+#[derive(Event)]
+pub struct DragEnd;
 
 // Project the cursor into the world coordinates and store it in a resource for easy use
 fn get_cursor_world_pos(
@@ -94,6 +97,7 @@ fn start_drag(mut commands: Commands, hovered: Option<Res<Hovered>>) {
             offset: hovered.offset,
         });
         commands.entity(hovered.entity).insert(Dragged);
+        commands.trigger_targets(DragStart, hovered.entity);
     }
 }
 
@@ -102,7 +106,7 @@ fn end_drag(mut commands: Commands, q_dragged: Query<Entity, With<Dragged>>) {
 
     for entity in &q_dragged {
         commands.entity(entity).remove::<Dragged>();
-        commands.trigger_targets(DragFinished, entity);
+        commands.trigger_targets(DragEnd, entity);
     }
 }
 

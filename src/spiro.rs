@@ -1,5 +1,5 @@
 use crate::{
-    dragging::{DragFinished, Draggable},
+    dragging::{DragEnd, DragStart, Draggable},
     prelude::*,
 };
 use rand::Rng;
@@ -75,7 +75,8 @@ const RAINBOW: [Srgba; 17] = [
 
 pub(super) fn plugin(app: &mut App) {
     app //
-        .observe(drag_finished)
+        .observe(drag_start)
+        .observe(drag_end)
         .add_systems(
             FixedUpdate,
             (
@@ -310,20 +311,37 @@ fn rotate_gears(
     }
 }
 
-fn drag_finished(
-    trigger: Trigger<DragFinished>,
-    mut q_fixed: Query<(Entity, &mut Transform), With<Fixed>>,
+fn drag_start(
+    trigger: Trigger<DragStart>,
+    mut commands: Commands,
+    q_fixed: Query<&Children, With<Fixed>>,
+    q_rotating: Query<Entity, With<Rotation>>,
+) {
+    for children in q_fixed.get(trigger.entity()).iter() {
+        for &child in children.iter() {
+            if let Ok(entity) = q_rotating.get(child) {
+                commands.entity(entity).insert(Paused);
+            }
+        }
+    }
+}
+
+fn drag_end(
+    trigger: Trigger<DragEnd>,
+    mut commands: Commands,
+    mut q_fixed: Query<(Entity, &mut Transform, &Children), With<Fixed>>,
+    q_rotating: Query<Entity, With<Rotation>>,
 ) {
     // A drag just finished, snap!
     const SNAP_DIST: f32 = 10.0;
 
     // Find the transform of the given entity
-    let (_entity, t1) = r!(q_fixed.get(trigger.entity()));
+    let (_entity, t1, _children) = r!(q_fixed.get(trigger.entity()));
 
     // Find the closest fixed transform less than the SNAP_DIST
     let mut min_dist = f32::INFINITY;
     let mut translation = None;
-    for (entity, t2) in &q_fixed {
+    for (entity, t2, _children) in &q_fixed {
         let dist = t1.translation.distance(t2.translation);
         if entity != trigger.entity() && dist < min_dist && dist < SNAP_DIST {
             min_dist = dist;
@@ -332,7 +350,15 @@ fn drag_finished(
     }
 
     if let Some(translation) = translation {
-        let (_entity, mut t1) = r!(q_fixed.get_mut(trigger.entity()));
+        let (_entity, mut t1, _children) = r!(q_fixed.get_mut(trigger.entity()));
         t1.translation = translation;
+    }
+
+    for (_entity, _transform, children) in q_fixed.get(trigger.entity()).iter() {
+        for &child in children.iter() {
+            if let Ok(entity) = q_rotating.get(child) {
+                commands.entity(entity).remove::<Paused>();
+            }
+        }
     }
 }
