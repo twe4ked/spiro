@@ -46,6 +46,9 @@ pub struct Draggable;
 #[derive(Component)]
 pub struct Dragged;
 
+#[derive(Event)]
+pub struct DragFinished;
+
 // Project the cursor into the world coordinates and store it in a resource for easy use
 fn get_cursor_world_pos(
     mut cursor_world_pos: ResMut<CursorWorldPos>,
@@ -99,6 +102,7 @@ fn end_drag(mut commands: Commands, q_dragged: Query<Entity, With<Dragged>>) {
 
     for entity in &q_dragged {
         commands.entity(entity).remove::<Dragged>();
+        commands.trigger_targets(DragFinished, entity);
     }
 }
 

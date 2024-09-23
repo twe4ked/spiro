@@ -1,4 +1,7 @@
-use crate::{dragging::Draggable, prelude::*};
+use crate::{
+    dragging::{DragFinished, Draggable},
+    prelude::*,
+};
 use rand::Rng;
 use std::f32::consts::TAU;
 
@@ -72,6 +75,7 @@ const RAINBOW: [Srgba; 17] = [
 
 pub(super) fn plugin(app: &mut App) {
     app //
+        .observe(drag_finished)
         .add_systems(
             FixedUpdate,
             (
@@ -303,5 +307,32 @@ fn rotate_gears(
                 rotating_transform.rotation = Quat::from_rotation_z(-angle);
             }
         }
+    }
+}
+
+fn drag_finished(
+    trigger: Trigger<DragFinished>,
+    mut q_fixed: Query<(Entity, &mut Transform), With<Fixed>>,
+) {
+    // A drag just finished, snap!
+    const SNAP_DIST: f32 = 10.0;
+
+    // Find the transform of the given entity
+    let (_entity, t1) = r!(q_fixed.get(trigger.entity()));
+
+    // Find the closest fixed transform less than the SNAP_DIST
+    let mut min_dist = f32::INFINITY;
+    let mut translation = None;
+    for (entity, t2) in &q_fixed {
+        let dist = t1.translation.distance(t2.translation);
+        if entity != trigger.entity() && dist < min_dist && dist < SNAP_DIST {
+            min_dist = dist;
+            translation = Some(t2.translation);
+        }
+    }
+
+    if let Some(translation) = translation {
+        let (_entity, mut t1) = r!(q_fixed.get_mut(trigger.entity()));
+        t1.translation = translation;
     }
 }
