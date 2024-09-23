@@ -201,6 +201,20 @@ fn ui(
                                 parent.spawn(RotatingGearBundle::rand());
                             });
                     }
+
+                    if ui.add(Button::new("Pause all")).clicked() {
+                        let paused = q_rotating
+                            .iter()
+                            .any(|(_, _, _, _, _, _, _, paused)| paused.is_some());
+
+                        for (entity, ..) in &q_rotating {
+                            if paused {
+                                commands.entity(entity).remove::<Paused>();
+                            } else {
+                                commands.entity(entity).insert(Paused);
+                            }
+                        }
+                    }
                 });
 
                 ui.separator();
