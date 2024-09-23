@@ -7,7 +7,10 @@ use crate::{
 };
 use bevy::window::PrimaryWindow;
 use bevy_egui::{
-    egui::{self, Button, Color32, CursorIcon, DragValue, Frame, Grid, ScrollArea, SidePanel, Ui},
+    egui::{
+        self, Button, CollapsingHeader, Color32, CursorIcon, DragValue, Frame, Grid, ScrollArea,
+        SidePanel, Ui,
+    },
     EguiContexts,
 };
 
@@ -57,119 +60,124 @@ fn ui(
                 for (i_fixed, (fixed_entity, mut radius, mut gear_color, children)) in
                     q_fixed.iter_mut().enumerate()
                 {
-                    ui.collapsing(format!("Spirograph #{}", i_fixed + 1), |ui| {
-                        // Fixed gear
-                        Grid::new(format!("grid: {i_fixed}"))
-                            .num_columns(2)
-                            .spacing([40.0, 4.0])
-                            .striped(true)
-                            .show(ui, |mut ui| {
-                                ui.label("Radius");
-                                ui.add(DragValue::new(&mut radius.0).range(1.0..=128.0).speed(0.1));
-                                ui.end_row();
+                    CollapsingHeader::new(format!("Spirograph #{}", i_fixed + 1))
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            // Fixed gear
+                            Grid::new(format!("grid: {i_fixed}"))
+                                .num_columns(2)
+                                .spacing([40.0, 4.0])
+                                .striped(true)
+                                .show(ui, |mut ui| {
+                                    ui.label("Radius");
+                                    ui.add(
+                                        DragValue::new(&mut radius.0).range(1.0..=128.0).speed(0.1),
+                                    );
+                                    ui.end_row();
 
-                                ui.label("Gear color");
-                                color_picker(&mut ui, &mut gear_color.0);
-                                ui.end_row();
-                            });
-                        ui.separator();
+                                    ui.label("Gear color");
+                                    color_picker(&mut ui, &mut gear_color.0);
+                                    ui.end_row();
+                                });
 
-                        // Rotating gears
-                        for (i, child) in children.iter().enumerate() {
-                            if let Ok((
-                                rotating_entity,
-                                mut line,
-                                mut line_color,
-                                mut gear_color,
-                                mut speed,
-                                mut pen,
-                                mut radius,
-                                paused,
-                            )) = q_rotating.get_mut(*child)
-                            {
-                                ui.indent((), |ui| {
-                                    // Gear settings
-                                    Grid::new(format!("grid {i_fixed} {i}"))
-                                        .num_columns(2)
-                                        .spacing([40.0, 4.0])
-                                        .striped(true)
-                                        .show(ui, |mut ui| {
-                                            ui.label("Speed");
-                                            ui.add(
-                                                DragValue::new(&mut speed.0)
-                                                    .range(0.0..=128.0)
-                                                    .speed(0.1),
-                                            );
-                                            ui.end_row();
+                            // Rotating gears
+                            for (i, child) in children.iter().enumerate() {
+                                if let Ok((
+                                    rotating_entity,
+                                    mut line,
+                                    mut line_color,
+                                    mut gear_color,
+                                    mut speed,
+                                    mut pen,
+                                    mut radius,
+                                    paused,
+                                )) = q_rotating.get_mut(*child)
+                                {
+                                    CollapsingHeader::new(format!("Gear #{}", i + 1))
+                                        .default_open(true)
+                                        .show(ui, |ui| {
+                                            // Gear settings
+                                            Grid::new(format!("grid {i_fixed} {i}"))
+                                                .num_columns(2)
+                                                .spacing([40.0, 4.0])
+                                                .striped(true)
+                                                .show(ui, |mut ui| {
+                                                    ui.label("Speed");
+                                                    ui.add(
+                                                        DragValue::new(&mut speed.0)
+                                                            .range(0.0..=128.0)
+                                                            .speed(0.1),
+                                                    );
+                                                    ui.end_row();
 
-                                            ui.label("Radius");
-                                            ui.add(
-                                                DragValue::new(&mut radius.0)
-                                                    .range(0.0..=128.0)
-                                                    .speed(0.1),
-                                            );
-                                            ui.end_row();
+                                                    ui.label("Radius");
+                                                    ui.add(
+                                                        DragValue::new(&mut radius.0)
+                                                            .range(0.0..=128.0)
+                                                            .speed(0.1),
+                                                    );
+                                                    ui.end_row();
 
-                                            ui.label("Pen distance");
-                                            ui.add(
-                                                DragValue::new(&mut pen.0)
-                                                    .range(0.0..=128.0)
-                                                    .speed(0.1),
-                                            );
-                                            ui.end_row();
+                                                    ui.label("Pen distance");
+                                                    ui.add(
+                                                        DragValue::new(&mut pen.0)
+                                                            .range(0.0..=128.0)
+                                                            .speed(0.1),
+                                                    );
+                                                    ui.end_row();
 
-                                            ui.label("Line color");
-                                            color_picker(&mut ui, &mut line_color.0);
-                                            ui.end_row();
+                                                    ui.label("Line color");
+                                                    color_picker(&mut ui, &mut line_color.0);
+                                                    ui.end_row();
 
-                                            ui.label("Gear color");
-                                            color_picker(&mut ui, &mut gear_color.0);
-                                            ui.end_row();
-                                        });
+                                                    ui.label("Gear color");
+                                                    color_picker(&mut ui, &mut gear_color.0);
+                                                    ui.end_row();
+                                                });
 
-                                    // Gear controls
-                                    ui.horizontal(|ui| {
-                                        if ui.add(Button::new("Clear line")).clicked() {
-                                            line.0 = Vec::new();
-                                        }
-
-                                        if ui.add(Button::new("Remove gear")).clicked() {
-                                            commands.entity(rotating_entity).despawn();
-                                        }
-
-                                        {
-                                            let mut toggle = paused.is_some();
-                                            ui.toggle_value(&mut toggle, "Pause");
-                                            if toggle != paused.is_some() {
-                                                if toggle {
-                                                    commands.entity(rotating_entity).insert(Paused);
-                                                } else {
-                                                    commands
-                                                        .entity(rotating_entity)
-                                                        .remove::<Paused>();
+                                            // Gear controls
+                                            ui.horizontal(|ui| {
+                                                if ui.add(Button::new("Clear line")).clicked() {
+                                                    line.0 = Vec::new();
                                                 }
-                                            }
-                                        }
+
+                                                if ui.add(Button::new("Remove gear")).clicked() {
+                                                    commands.entity(rotating_entity).despawn();
+                                                }
+
+                                                {
+                                                    let mut toggle = paused.is_some();
+                                                    ui.toggle_value(&mut toggle, "Pause");
+                                                    if toggle != paused.is_some() {
+                                                        if toggle {
+                                                            commands
+                                                                .entity(rotating_entity)
+                                                                .insert(Paused);
+                                                        } else {
+                                                            commands
+                                                                .entity(rotating_entity)
+                                                                .remove::<Paused>();
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        });
+                                }
+                            }
+
+                            // Spirograph controls
+                            ui.horizontal(|ui| {
+                                if ui.add(Button::new("Add gear")).clicked() {
+                                    commands.entity(fixed_entity).with_children(|parent| {
+                                        parent.spawn(RotatingGearBundle::rand());
                                     });
-                                });
+                                }
 
-                                ui.separator();
-                            }
-                        }
-
-                        // Spirograph controls
-                        ui.horizontal(|ui| {
-                            if ui.add(Button::new("Add gear")).clicked() {
-                                commands.entity(fixed_entity).with_children(|parent| {
-                                    parent.spawn(RotatingGearBundle::rand());
-                                });
-                            }
-
-                            if ui.add(Button::new("Remove spirograph")).clicked() {
-                                commands.entity(fixed_entity).despawn_recursive();
-                            }
+                                if ui.add(Button::new("Remove spirograph")).clicked() {
+                                    commands.entity(fixed_entity).despawn_recursive();
+                                }
+                            });
                         });
-                    });
                 }
 
                 ui.separator();
